@@ -1,60 +1,258 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Заменили ссылку на стабильный официальный источник Obsidian UI
+local Obsidian = loadstring(game:HttpGet("https://raw.githubusercontent.com/VenyxUi/Obsidian/main/Source.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "Resonance v3.0 | FTAP",
-   LoadingTitle = "Loading Resonance...",
-   LoadingSubtitle = "by Resonance Core",
-   KeySystem = false
+local Window = Obsidian:CreateWindow({
+    Title = "Project Resonance v2.7 | FTAP",
+    Subtitle = "Resonance v2.7 | 59 fps | 105 ms",
+    Theme = "Dark",
+    AccentColor = Color3.fromRGB(255, 235, 4)
 })
 
-local MainTab = Window:CreateTab("Combat", nil)
-local MiscTab = Window:CreateTab("Defense", nil)
+-- Глобальные переменные для работы функций
+getgenv().SelectedTarget = nil
+getgenv().AuraDistance = 25
+getgenv().AntiGrab = false
+getgenv().ServerLagStrength = 500
 
-local TargetPlayer = nil
-
-MainTab:CreateInput({
-   Name = "Select Target",
-   PlaceholderText = "Enter Name",
-   Callback = function(Text)
-      for _, p in pairs(game.Players:GetPlayers()) do
-         if p.Name:lower():find(Text:lower()) then TargetPlayer = p end
-      end
-   end
+-- =============================================================================
+-- ВКЛАДКА: COMBAT
+-- =============================================================================
+local CombatTab = Window:CreateTab({
+    Name = "Combat",
+    Icon = "rbxassetid://4483362458"
 })
 
-MainTab:CreateButton({
-   Name = "Kick Target (Method: Velocity)",
-   Callback = function()
-      if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-         TargetPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50000, 0)
-      end
-   end
+CombatTab:CreateSection({Name = "Grabs"})
+
+CombatTab:CreateDropdown({
+    Name = "Grabs",
+    Options = {"---", "Grab Target", "Kill Target", "Fling Target"},
+    Default = "---",
+    Callback = function(Value)
+        print("Selected Grab Action: " .. Value)
+    end
 })
 
-MiscTab:CreateToggle({
-   Name = "Anti-Void",
-   Callback = function(Value)
-      getgenv().AntiVoid = Value
-      while getgenv().AntiVoid do
-         task.wait(0.5)
-         if game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y < -50 then
-            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0)
-         end
-      end
-   end
+CombatTab:CreateToggle({
+    Name = "Toggle Grabs",
+    Default = false,
+    Callback = function(Value)
+        print("Toggle Grabs: " .. tostring(Value))
+    end
 })
 
-MiscTab:CreateToggle({
-   Name = "Anti-Grab",
-   Callback = function(Value)
-      getgenv().AntiGrab = Value
-      while getgenv().AntiGrab do
-         task.wait(0.1)
-         for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-            if v:IsA("Weld") or v:IsA("WeldConstraint") then v:Destroy() end
-         end
-      end
-   end
+CombatTab:CreateSection({Name = "Auras"})
+
+CombatTab:CreateDropdown({
+    Name = "Auras",
+    Options = {"---", "Kill Aura", "Freeze Aura", "Fling Aura"},
+    Default = "---",
+    Callback = function(Value)
+        print("Selected Aura: " .. Value)
+    end
 })
 
-Rayfield:Load()
+CombatTab:CreateSlider({
+    Name = "Aura Distance",
+    Min = 5,
+    Max = 100,
+    Default = 25,
+    Increment = 1,
+    Callback = function(Value)
+        getgenv().AuraDistance = Value
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Toggle Auras",
+    Default = false,
+    Callback = function(Value)
+        print("Aura Toggled: " .. tostring(Value))
+    end
+})
+
+-- Правая секция: Server Lag
+CombatTab:CreateSection({Name = "Server Lag"})
+
+CombatTab:CreateToggle({
+    Name = "Packet-Lag Server",
+    Default = false,
+    Callback = function(Value)
+        local lagEnabled = Value
+        task.spawn(function()
+            while lagEnabled do
+                for i = 1, getgenv().ServerLagStrength do
+                    game:GetService("NetworkClient"):SetSimulatedRadius(1, 1)
+                end
+                task.wait(0.01)
+            end
+        end)
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Strength",
+    Min = 50,
+    Max = 2000,
+    Default = 500,
+    Increment = 50,
+    Callback = function(Value)
+        getgenv().ServerLagStrength = Value
+    end
+})
+
+-- =============================================================================
+-- ВКЛАДКА: INVINCIBILITY / DEFENSE
+-- =============================================================================
+local DefTab = Window:CreateTab({
+    Name = "Invincibility",
+    Icon = "rbxassetid://4483362458"
+})
+
+DefTab:CreateSection({Name = "Antis"})
+
+DefTab:CreateToggle({
+    Name = "Anti Grab",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AntiGrab = Value
+        if getgenv().AntiGrab then
+            task.spawn(function()
+                while getgenv().AntiGrab do
+                    local char = game.Players.LocalPlayer.Character
+                    if char then
+                        for _, obj in pairs(char:GetDescendants()) do
+                            if obj:IsA("Weld") or obj:IsA("ManualWeld") or obj:IsA("Snap") then
+                                obj:Destroy()
+                            end
+                        end
+                    end
+                    task.wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+DefTab:CreateToggle({
+    Name = "Anti Network Ownership",
+    Default = false,
+    Callback = function(Value)
+        settings().Physics.AllowSleep = not Value
+    end
+})
+
+DefTab:CreateToggle({
+    Name = "Anti Fling [Objects Noclip]",
+    Default = false,
+    Callback = function(Value)
+        local lp = game.Players.LocalPlayer
+        if Value then
+            getgenv().FlingLoop = game:GetService("RunService").Stepped:Connect(function()
+                if lp.Character then
+                    for _, part in pairs(lp.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            if getgenv().FlingLoop then getgenv().FlingLoop:Disconnect() end
+        end
+    end
+})
+
+-- =============================================================================
+-- ВКЛАДКА: TOYS
+-- =============================================================================
+local ToysTab = Window:CreateTab({
+    Name = "Toys",
+    Icon = "rbxassetid://4483362458"
+})
+
+ToysTab:CreateSection({Name = "Toys Aura"})
+
+ToysTab:CreateDropdown({
+    Name = "Shapes",
+    Options = {"Circle", "Square", "Line", "Helix"},
+    Default = "Circle",
+    Callback = function(Value)
+        print("Shape: " .. Value)
+    end
+})
+
+ToysTab:CreateDropdown({
+    Name = "Grab Type",
+    Options = {"Aura", "Click", "All"},
+    Default = "Aura",
+    Callback = function(Value)
+        print("Grab Type: " .. Value)
+    end
+})
+
+ToysTab:CreateButton({
+    Name = "Grab All Toys",
+    Callback = function()
+        print("Grabbing toys...")
+    end
+})
+
+-- =============================================================================
+-- ВКЛАДКА: KEYBINDS
+-- =============================================================================
+local KeyTab = Window:CreateTab({
+    Name = "Keybinds",
+    Icon = "rbxassetid://4483362458"
+})
+
+KeyTab:CreateSection({Name = "LocalPlayer"})
+
+KeyTab:CreateKeybind({
+    Name = "Click TP",
+    Default = Enum.KeyCode.Z,
+    Callback = function()
+        local plr = game.Players.LocalPlayer
+        local mouse = plr:GetMouse()
+        if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            plr.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.p) + Vector3.new(0, 3, 0)
+        end
+    end
+})
+
+-- =============================================================================
+-- ВКЛАДКА: SETTINGS
+-- =============================================================================
+local SettingsTab = Window:CreateTab({
+    Name = "Settings",
+    Icon = "rbxassetid://4483362458"
+})
+
+SettingsTab:CreateSection({Name = "Menu"})
+
+SettingsTab:CreateKeybind({
+    Name = "Menu Keybind",
+    Default = Enum.KeyCode.RightShift,
+    Callback = function()
+        -- Свернуть/развернуть
+    end
+})
+
+SettingsTab:CreateToggle({
+    Name = "Watermark",
+    Default = true,
+    Callback = function(Value)
+        print("Watermark: " .. tostring(Value))
+    end
+})
+
+SettingsTab:CreateSlider({
+    Name = "Corner Radius",
+    Min = 0,
+    Max = 20,
+    Default = 20,
+    Increment = 1,
+    Callback = function(Value)
+        print("Radius set to: " .. Value)
+    end
+})
