@@ -1,0 +1,60 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Resonance v3.0 | FTAP",
+   LoadingTitle = "Loading Resonance...",
+   LoadingSubtitle = "by Resonance Core",
+   KeySystem = false
+})
+
+local MainTab = Window:CreateTab("Combat", nil)
+local MiscTab = Window:CreateTab("Defense", nil)
+
+local TargetPlayer = nil
+
+MainTab:CreateInput({
+   Name = "Select Target",
+   PlaceholderText = "Enter Name",
+   Callback = function(Text)
+      for _, p in pairs(game.Players:GetPlayers()) do
+         if p.Name:lower():find(Text:lower()) then TargetPlayer = p end
+      end
+   end
+})
+
+MainTab:CreateButton({
+   Name = "Kick Target (Method: Velocity)",
+   Callback = function()
+      if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+         TargetPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50000, 0)
+      end
+   end
+})
+
+MiscTab:CreateToggle({
+   Name = "Anti-Void",
+   Callback = function(Value)
+      getgenv().AntiVoid = Value
+      while getgenv().AntiVoid do
+         task.wait(0.5)
+         if game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y < -50 then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0)
+         end
+      end
+   end
+})
+
+MiscTab:CreateToggle({
+   Name = "Anti-Grab",
+   Callback = function(Value)
+      getgenv().AntiGrab = Value
+      while getgenv().AntiGrab do
+         task.wait(0.1)
+         for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("Weld") or v:IsA("WeldConstraint") then v:Destroy() end
+         end
+      end
+   end
+})
+
+Rayfield:Load()
